@@ -29,6 +29,7 @@ conn.on('connected', () => {
 const userSchema = mongoose.Schema({
   father_id: {type: String},
   family_id: {type: String},
+  familyName: {type: String}, // 名字
   name: {type: String}, // 名字
   generations: {type: String}, // 名字
   familySize: {type: String}, 
@@ -74,6 +75,22 @@ const familySchema = mongoose.Schema({
 const familyModel = mongoose.model('family', familySchema) // 集合为: chats
 // 向外暴露Model
 exports.familyModel = familyModel
+
+// 定义chats集合的文档结构
+const chatSchema = mongoose.Schema({
+  from_: {type: String, required: true}, // 发送用户的id
+  to: {type: String, required: true}, // 接收用户的id
+  chat_id: {type: String, required: true}, // from和to组成的字符串
+  content: {type: String, required: true}, // 内容
+  type: {type: String, required: true},
+  isRead:{type: Boolean, required: true},
+  time:{type: Number, required: true},
+  create_time:{type: String} // 创建时间
+})
+// 定义能操作chats集合数据的Model
+const ChatModel = mongoose.model('chat', chatSchema) // 集合为: chats
+// 向外暴露Model
+exports.ChatModel = ChatModel
 
 // module.exports = xxx
 // exports.xxx = value

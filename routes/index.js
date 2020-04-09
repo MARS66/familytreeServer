@@ -6,7 +6,7 @@ var router = express.Router();
 const path =require('path');
 
 const md5 = require('blueimp-md5')
-const {UserModel, familyModel} = require('../db/models')
+const {UserModel, familyModel,ChatModel} = require('../db/models')
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -61,7 +61,7 @@ router.post('/upImage', function (req, res, next) {
           });
       } else {
           let avatarName = '/' + Date.now() + '.' + extName;
-          let  imgPath="http://192.168.1.6:4000/images/Img"+avatarName
+          let  imgPath="http://localhost:4000/images/Img"+avatarName
           let newPath = form.uploadDir + avatarName;
           fs.renameSync(files.file.path, newPath); //重命名
           console.log(newPath)
@@ -221,6 +221,9 @@ router.post('/addWife', function (req, res) {
     }
   })
 })
+
+
+
 // 更新人员数据
 router.post('/upData', function (req, res) {
   
@@ -243,9 +246,13 @@ router.post('/upFamilyData', function (req, res) {
   
   let data=req.body
   console.log(data._id);
+ 
   // 根据username和password查询数据库users, 如果没有, 返回提示错误的信息, 如果有, 返回登陆成功信息(包含user)
   familyModel.updateOne({_id:data._id}, data,function (err, user) {
     if(user) { 
+      UserModel.updateMany({family_id:data._id}, {$set:{familyName:data.name}},function (err, user) {
+      
+      })
       res.send({code: 0, data: user})
     } else {// 登陆失败
       res.send({code: 1, msg: '服务异常'})
@@ -396,6 +403,78 @@ router.get('/treeData', function (req, res) {
   }
 
 });
+
+/*
+获取当前用户所有相关聊天信息列表
+ */
+router.get('/msgList', function (req, res) {
+  // 获取cookie中的userid
+  console.log(req.query.id);
+  const userid =req.query.id
+  // 查询得到所有user文档数组
+  UserModel.find(function (err, userDocs) {
+    // 用对象存储所有user信息: key为user的_id, val为name和header组成的user对象
+    const users = [] // 数组容器
+    let arr=[];
+    userDocs.forEach(doc => {
+
+   if (doc._id!=userid) {
+    const chat_id = [doc._id,userid].sort().join('_')// from_to或者to_from
+    ChatModel.find({chat_id},function(err, user){
+      if (user.length>0) {
+        arr=user.sort((a,b)=>b.time-a.time)
+        let count=arr.filter((item,index)=>{return item.isRead==false&item.from_!=userid}).length
+        console.log(count);
+        users.push({name:doc.name,img:doc.img,
+          count:count,id:doc._id,chat_id:chat_id,messages:arr,
+          newestMsg:arr[arr.length-1].content,
+          time:arr[arr.length-1].time,create_time:arr[arr.length-1].create_time})
+      }
+    })
+   
+   } 
+    })
+
+
+  users.sort((a,b)=>a.time-b.time)
+    // const users = userDocs.reduce((users, user) => {
+    //   users[user._id] = {username: user.name, img: user.img}
+    //   return users
+    // } , {})
+    /*
+    查询userid相关的所有聊天信息
+     参数1: 查询条件
+     参数2: 过滤条件
+     参数3: 回调函数
+    */
+   
+    ChatModel.find({'$or': [{from_: userid}, {to: userid}]}, function (err, chatMsgs) {
+      // 返回包含所有用户和当前用户相关的所有聊天消息的数据
+      res.send({code: 0, data: {users}})
+    })
+  })
+})
+
+/*
+修改指定消息为已读
+ */
+router.post('/readmsg', function (req, res) {
+  // 得到请求中的from和to
+  console.log(222222222);
+  console.log(req.body);
+  const {from_,to}= req.body
+  /*
+  更新数据库中的chat数据
+  参数1: 查询条件
+  参数2: 更新为指定的数据对象
+  参数3: 是否1次更新多条, 默认只更新一条
+  参数4: 更新完成的回调函数
+   */
+  ChatModel.update({from_, to, isRead: false}, {isRead: true}, {multi: true}, function (err, doc) {
+    console.log('/readmsg', doc)
+    res.send({code: 0, data:to}) // 更新的数量
+  })
+})
 
 
 

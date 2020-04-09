@@ -61,7 +61,7 @@ router.post('/upImage', function (req, res, next) {
           });
       } else {
           let avatarName = '/' + Date.now() + '.' + extName;
-          let  imgPath="http://localhost:4000/images/Img"+avatarName
+          let  imgPath="http://62.234.117.222:4000/images/Img"+avatarName
           let newPath = form.uploadDir + avatarName;
           fs.renameSync(files.file.path, newPath); //重命名
           console.log(newPath)
